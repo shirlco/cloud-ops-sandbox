@@ -197,7 +197,7 @@ applyTerraform() {
   error_code=1
   while [[ "${error_code}" -gt 0 && "${TRIES}" -lt 20 ]]; do
     sleep 5
-    terraform init -backend-config "bucket=${bucket_name}" -lockfile=false 2>
+    terraform init -backend-config "bucket=${bucket_name}" -lockfile=false
     error_code=$?
     TRIES=$((TRIES+1))
   done;
