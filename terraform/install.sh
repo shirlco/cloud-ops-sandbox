@@ -142,7 +142,7 @@ getOrCreateBucket() {
   else
     # create new bucket
     TRIES=0
-    while [[ $(gsutil mb -p "$project_id" "gs://$bucket_name") || "${TRIES}" -lt 5 ]]; do
+    while [[ $(gsutil mb -p "$project_id" "gs://$bucket_name") || "${TRIES}" -lt 20 ]]; do
       log "Checking if bucket $bucket_name exists..."
       if [[ -n "$(gsutil ls | grep gs://$bucket_name/)" ]]; then
         log "Bucket $bucket_name created"
@@ -192,16 +192,16 @@ applyTerraform() {
   rm -f .terraform/terraform.tfstate
 
   log "Initialize terraform backend with bucket ${bucket_name}"
-
-  if terraform init -backend-config "bucket=${bucket_name}" -lockfile=false 2> /dev/null; then
-    log "Credential check OK..."
-  else
-    log ""
-    log "Credential check failed. Please login..."
-    gcloud auth application-default login
-    terraform init -backend-config "bucket=${bucket_name}" -lockfile=false # lock-free to prevent access fail
-  fi
-
+  set +e
+  TRIES=0
+  error_code=1
+  while [[ "${error_code}" -gt 0 && "${TRIES}" -lt 20 ]]; do
+    sleep 5
+    terraform init -backend-config "bucket=${bucket_name}" -lockfile=false 2>
+    error_code=$?
+    TRIES=$((TRIES+1))
+  done;
+  set -e
   #build Terraform apply command 
   terraform_command="terraform apply -auto-approve -var=\"project_id=${project_id}\" -var=\"bucket_name=${bucket_name}\" -var=\"skip_loadgen=${skip_loadgen:-false}\""
 
