@@ -78,7 +78,7 @@ resource "google_container_cluster" "gke" {
   # interesting things.
   node_pool {
     node_config {
-      machine_type = "n1-standard-2"
+      machine_type = "e2-standard-4"
 
       oauth_scopes = [
         "https://www.googleapis.com/auth/cloud-platform"
@@ -122,7 +122,7 @@ resource "google_container_cluster" "gke" {
   # be enabled) before the cluster can be created. This will not address the
   # eventual consistency problems we have with the API but it will make sure
   # that we're at least trying to do things in the right order.
-  depends_on = [google_project_service.gke]
+  depends_on = [google_project_service.gke, google_project_service.gkehub, google_project_service.meshconfig]
 }
 
 
@@ -170,6 +170,14 @@ resource "null_resource" "annotate_ksa" {
   depends_on = [google_service_account_iam_binding.set_gsa_binding]
 }
 
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  host                   = "https://${google_container_cluster.gke.endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(google_container_cluster.gke.master_auth.0.cluster_ca_certificate)
+}
+
 module "asm" {
   source                    = "terraform-google-modules/kubernetes-engine/google//modules/asm"
   project_id                = data.google_project.project.project_id
@@ -201,7 +209,7 @@ resource "null_resource" "deploy_services" {
   EOT
   }
 
-  depends_on = [null_resource.install_istio]
+  depends_on = [module.asm]
 }
 
 # We wait for all of our microservices to become available on kubernetes
