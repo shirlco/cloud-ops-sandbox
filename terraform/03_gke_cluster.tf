@@ -181,13 +181,12 @@ provider "kubernetes" {
 module "asm" {
   source                    = "terraform-google-modules/kubernetes-engine/google//modules/asm"
   project_id                = data.google_project.project.project_id
-  cluster_name              = var.gke_cluster_name
+  cluster_name              = google_container_cluster.gke.name
   cluster_location          = var.gke_location != "" ? var.gke_location : element(random_shuffle.zone.result, 0)
   multicluster_mode         = "manual"
   enable_cni                = true
   enable_fleet_registration = false
   enable_mesh_feature       = true
-  depends_on                = [null_resource.annotate_ksa]
 }
 
 # Deploy microservices into GKE cluster
